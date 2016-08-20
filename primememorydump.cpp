@@ -1,6 +1,5 @@
 #include "primememorydump.h"
 
-PrimeMemoryDump::PrimeMemoryDump(QObject *parent) : QObject(parent)
-{
+PrimeMemoryDump::PrimeMemoryDump() {}
 
-}
+PrimeMemoryDump::~PrimeMemoryDump() {}
