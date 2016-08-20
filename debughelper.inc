@@ -1,0 +1,4 @@
+#ifndef DEBUGHELPER_INC
+#define DEBUGHELPER_INC
+
+#endif // DEBUGHELPER_INC
