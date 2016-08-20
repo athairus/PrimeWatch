@@ -4,11 +4,35 @@
 #include <QDebug>
 #include <QtEndian>
 
-#if defined( Q_OS_WIN )
-#include <Winsock2.h>
-#else
-#include <netinet/in.h>
-#endif
+float ntohf( float val ) {
+    Q_ASSERT( sizeof( float ) == sizeof( quint32 ) );
+
+    union {
+        float asFloat;
+        quint32 asLong;
+    } data = { val };
+
+    data.asLong = qFromBigEndian<quint32>( data.asLong );
+    return data.asFloat;
+}
+
+double ntohd( double val ) {
+    Q_ASSERT( sizeof( double ) == sizeof( quint64 ) );
+
+    union {
+        double asDouble;
+        struct {
+            quint32 first;
+            quint32 second;
+        } asLongPair;
+    } data = { val };
+
+    quint32 firstBE = data.asLongPair.first;
+    quint32 secondBE = data.asLongPair.second;
+    data.asLongPair.first = qFromBigEndian<quint32>( secondBE );
+    data.asLongPair.second = qFromBigEndian<quint32>( firstBE );
+    return data.asDouble;
+}
 
 Client::Client( QObject *parent ) : QObject( parent ) {
     typedef void ( QAbstractSocket::*QAbstractSocketErrorSignal )( QAbstractSocket::SocketError );
@@ -59,6 +83,7 @@ void Client::readData() {
     if( socket.bytesAvailable() % PACKET_SIZE != 0 ) {
         qWarning().nospace() << "Buffer misalignment! Bytes available: " << socket.bytesAvailable();
         qWarning() << "sizeof packet:" << sizeof( PrimeMemoryDump );
+        socket.readAll();
     }
 
     // Read packets until buffer is empty
@@ -77,20 +102,19 @@ void Client::readData() {
     data.makerid = qFromBigEndian( data.makerid );
 
     for( int i = 0; i < 3; i++ ) {
-        data.speed[ i ] = ntohf( *reinterpret_cast<quint32 *>( &data.speed[ i ] ) );
-        data.pos[ i ] = ntohf( *reinterpret_cast<quint32 *>( &data.pos[ i ] ) );
+        data.speed[ i ] = ntohf( data.speed[ i ] );
+        data.pos[ i ] = ntohf( data.pos[ i ] );
     }
 
     data.room = qFromBigEndian( data.room );
-    data.health = ntohf( *reinterpret_cast<quint32 *>( &data.health ) );
+    data.health = ntohf( data.health );
 
     for( int i = 0; i < INVENTORY_SIZE; i++ ) {
-        data.inventory[ i ] = ntohf( *reinterpret_cast<quint32 *>( &data.inventory[ i ] ) );
-        data.inventory[ i + INVENTORY_SIZE ] = ntohf( *reinterpret_cast<quint32 *>( &data.inventory[ i + INVENTORY_SIZE ] ) );
+        data.inventory[ i ] = ntohf( data.inventory[ i ] );
+        data.inventory[ i + INVENTORY_SIZE ] = ntohf( data.inventory[ i + INVENTORY_SIZE ] );
     }
 
-    static bool bigEndianHost = ntohl( 0xAABBCCDD ) == 0xAABBCCDD;
-    data.timer = ntohd( *reinterpret_cast<quint64 *>( &data.timer ) );
+    data.timer = ntohd( data.timer );
     emit dataChanged();
 }
 
