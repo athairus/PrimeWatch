@@ -2,7 +2,6 @@
 
 #include <QtGlobal>
 #include <QDebug>
-#include <QtEndian>
 
 float ntohf( float val ) {
     Q_ASSERT( sizeof( float ) == sizeof( quint32 ) );
@@ -60,10 +59,16 @@ Client::Client( QObject *parent ) : QObject( parent ) {
             emit connected();
         }
 
+        if( newState == QAbstractSocket::BoundState ) {
+            emit connected();
+        }
+
         qDebug() << newState;
     } );
 
     connect( &socket, &QIODevice::readyRead, this, &Client::readData );
+
+    //qDebug() << "sizeof( PACKET_TYPE_GAME_DATA ) =" << PACKET_TYPE_GAME_DATA_SIZE;
 }
 
 void Client::connectToServer( QString ip ) {
@@ -79,43 +84,67 @@ void Client::abortConnection() {
 }
 
 void Client::readData() {
-    // Check packet size
-    if( socket.bytesAvailable() % PACKET_SIZE != 0 ) {
-        qWarning().nospace() << "Buffer misalignment! Bytes available: " << socket.bytesAvailable();
-        qWarning() << "sizeof packet:" << sizeof( PrimeMemoryDump );
-        socket.readAll();
-    }
-
     // Read packets until buffer is empty
-    while( socket.readLine( reinterpret_cast<char *>( &data ), PACKET_SIZE ) > 0 );
+    while( socket.bytesAvailable() ) {
+        // Grab the type byte
+        char type;
+        socket.peek( &type, 1 );
 
-    // Make sure the data is valid
-    // FIXME: Apparently all the packets are of type 0x0
-    //    if( data.type != PACKET_TYPE_GAME_DATA ) {
-    //        qWarning().nospace() << "Invalid packet, type = 0x" << hex << data.type;
-    //        abortConnection();
-    //        return;
-    //    }
+        // Parse packet according to its type
+        switch( type ) {
+            case PACKET_TYPE_GAME_DATA: {
+                // Incomplete packet in the buffer, wait until more data comes in before parsing it
+                if( socket.bytesAvailable() < PACKET_TYPE_GAME_DATA_SIZE ) {
+                    return;
+                }
 
-    // Correct the byte order
-    data.gameid = qFromBigEndian( data.gameid );
-    data.makerid = qFromBigEndian( data.makerid );
+                // Read the packet
+                socket.read( reinterpret_cast<char *>( &data ), PACKET_TYPE_GAME_DATA_SIZE );
 
-    for( int i = 0; i < 3; i++ ) {
-        data.speed[ i ] = ntohf( data.speed[ i ] );
-        data.pos[ i ] = ntohf( data.pos[ i ] );
+                // Correct the byte order
+                {
+                    data.gameid = qFromBigEndian( data.gameid );
+                    data.makerid = qFromBigEndian( data.makerid );
+
+                    for( int i = 0; i < 3; i++ ) {
+                        data.speed[ i ] = ntohf( data.speed[ i ] );
+                        data.pos[ i ] = ntohf( data.pos[ i ] );
+                    }
+
+                    data.worldID = qFromBigEndian( data.worldID );
+                    data.worldStatus = qFromBigEndian( data.worldStatus );
+
+                    data.room = qFromBigEndian( data.room );
+                    data.health = ntohf( data.health );
+
+                    for( int i = 0; i < INVENTORY_SIZE; i++ ) {
+                        data.inventory[ i ] = ntohf( data.inventory[ i ] );
+                        data.inventory[ i + INVENTORY_SIZE ] = ntohf( data.inventory[ i + INVENTORY_SIZE ] );
+                    }
+
+                    data.timer = ntohd( data.timer );
+                }
+
+                emit dataChanged();
+                break;
+            }
+
+            // case PACKET_TYPE_RAW_DISC_READ: {
+            //     break;
+            // }
+
+            // case PACKET_TYPE_RAW_DISC_INVALID: {
+            //     break;
+            // }
+
+            default: {
+                qDebug().nospace() << "Unknown packet with id 0x" << hex << static_cast<int>( type );
+                qDebug() << socket.bytesAvailable() << "bytes available";
+                //qDebug() << socket.readAll();
+                return;
+            }
+        }
     }
-
-    data.room = qFromBigEndian( data.room );
-    data.health = ntohf( data.health );
-
-    for( int i = 0; i < INVENTORY_SIZE; i++ ) {
-        data.inventory[ i ] = ntohf( data.inventory[ i ] );
-        data.inventory[ i + INVENTORY_SIZE ] = ntohf( data.inventory[ i + INVENTORY_SIZE ] );
-    }
-
-    data.timer = ntohd( data.timer );
-    emit dataChanged();
 }
 
 QString Client::getStatus() {

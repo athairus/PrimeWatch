@@ -24,7 +24,3 @@ foreach(filepath_full ${QML})
 	configure_file(${filepath_relative_in} ${filepath_relative_in} COPYONLY)
 endforeach()
 
-# Endianness is the root of all evil
-if(WIN32)
-  target_link_libraries(${PROJECT_NAME} wsock32 ws2_32)
-endif()

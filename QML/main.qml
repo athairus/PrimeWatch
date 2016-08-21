@@ -184,24 +184,39 @@ Window {
             anchors.margins: 10;
             anchors.centerIn: parent;
 
-            Text { text: "Type, gameID, makerID"; }
-            Text { text: client.type; }
-            Text { text: client.gameid; }
-            Text { text: client.makerid; }
+            Text { text: "Game"; }
+            Text { text: client.gameid + client.makerid; }
 
             Item { width: 10; height: width; } // Spacer
 
             Text { text: "Speed (X, Y, Z)"; }
-            Text { text: client.speedX; }
-            Text { text: client.speedY; }
-            Text { text: client.speedZ; }
+            Text { text: client.speedX.toFixed( 2 ); }
+            Text { text: client.speedY.toFixed( 2 ); }
+            Text { text: client.speedZ.toFixed( 2 ); }
 
             Item { width: 10; height: width; } // Spacer
 
             Text { text: "Position (X, Y, Z)"; }
-            Text { text: client.posX; }
-            Text { text: client.posY; }
-            Text { text: client.posZ; }
+            Text { text: client.posX.toFixed( 2 ); }
+            Text { text: client.posY.toFixed( 2 ); }
+            Text { text: client.posZ.toFixed( 2 ); }
+
+            Item { width: 10; height: width; } // Spacer
+
+            Text { text: "World ID, status"; }
+            Text { text: client.worldID; }
+            Text { text: {
+                    switch( client.worldStatus ) {
+                        case 0: return "Loading";
+                        case 1: return "Loading Map";
+                        case 2: return "Loading Map Areas";
+                        case 3: return "Loading Sky Box";
+                        case 4: return "Loading Sound Groups";
+                        case 5: return "Ready";
+                        default: return "ERROR";
+                    }
+                }
+            }
 
             Item { width: 10; height: width; } // Spacer
 
@@ -211,7 +226,7 @@ Window {
             Item { width: 10; height: width; } // Spacer
 
             Text { text: "Health"; }
-            Text { text: client.health; }
+            Text { text: client.health.toFixed( 2 ); }
 
             Item { width: 10; height: width; } // Spacer
 
