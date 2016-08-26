@@ -128,7 +128,7 @@ class Client : public QObject {
             return data.room;
         }
         QString getWorldID() {
-            return QString( "%1" ).arg( data.worldID, 8, 16, QChar( '0' ) ) + ".MREA";
+            return QString( "%1" ).arg( data.worldID, 8, 16, QChar( '0' ) ) + ".MLVL";
         }
         quint32 getWorldStatus() {
             return data.worldStatus;
